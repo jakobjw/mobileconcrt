@@ -14,6 +14,7 @@
 #
 # Author: jakobjw
 # License: MIT
+# URL: https://github.com/jakobjw/mobileconcrt
 
 
 import os, plistlib, uuid, time, argparse
@@ -42,7 +43,7 @@ except:
 certs = []
 # entries shall be dicts with the following items:
 # - cert_filename: the filename of the .crt file, without the .crt extension
-# - cert_content: bytes object with the .crt file content (plistlib does the base64-encoding)
+# - cert_content: bytes object with the .crt file content (plistlib handles the base64 encoding)
 # - cert_uuid: a unique UUID string (uppercase, including the dashes)
 
 
