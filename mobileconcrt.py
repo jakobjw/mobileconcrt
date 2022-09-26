@@ -1,12 +1,11 @@
 # mobileconcrt
 #
-# Version: 0.1
+# Version: 0.2
 # Description: Taking certificate (.crt) files as input, creates Apple .mobileconfig profile files for installation on Apple Mac systems
 #
 # Usage:
-# - Place .crt files in a directory "input-crt-files" next to this script
-# - Call this script with the usage as indicated in the help message (call without args or with --help)
-# - The resulting .mobileconfig file is created in a directory "output" next to this script
+# - Call this script with the usage as indicated in the help message (call it without args or with --help)
+# - The resulting .mobileconfig file is created in the current working directory or at the specified path
 #
 # Limitations:
 # - Scope for the profile installation currently limited to "User" (other option would be "System")
@@ -20,24 +19,27 @@
 import os, plistlib, uuid, time, argparse
 
 
-DIR_NAME_INPUT_CRT_FILES = "input-crt-files"
 ALLOWED_EXTENSION_CRT_FILES = ".crt"
-DIR_NAME_OUTPUT = "output"
 OUTPUT_FILENAME_PREFIX = "mobileconcrt"
 OUTPUT_FILENAME_EXTENSION = ".mobileconfig"
 
 
 argument_parser = argparse.ArgumentParser()
-argument_parser.add_argument("-pn", "--profilename", dest="profile_name", help="profile display name, e.g. \"Profile 1\"", required=True)
-argument_parser.add_argument("-pd", "--profiledescription", dest="profile_description", help="profile description, e.g. \"This profile is for that\"", required=False)
-argument_parser.add_argument("-id", "--identifier", dest="identifier", help="reverse-DNS style identifier, e.g. \"com.example.profile1\"", required=True)
-argument_parser.add_argument("-org", "--organization", dest="organization", help="organization name, e.g. \"Contoso\"", required=False)
-argument_parser.add_argument("-out", "--outfile", dest="outfile", help="output mobileconfig filename, e.g. \"my-profile.mobileconfig\"", required=False)
+argument_parser.add_argument("-in", "--inputdir", dest="input_directory", help="[REQUIRED] input directory with the .crt files, e.g. \"../my-crt-files\"", required=True)
+argument_parser.add_argument("-pn", "--profilename", dest="profile_name", help="[REQUIRED] profile display name, e.g. \"Profile 1\"", required=True)
+argument_parser.add_argument("-pd", "--profiledescription", dest="profile_description", help="optional profile description, e.g. \"This profile is for that\"", required=False)
+argument_parser.add_argument("-id", "--identifier", dest="identifier", help="[REQUIRED] reverse-DNS style identifier, e.g. \"com.example.profile1\"", required=True)
+argument_parser.add_argument("-org", "--organization", dest="organization", help="optional organization name, e.g. \"Contoso\"", required=False)
+argument_parser.add_argument("-out", "--outpath", dest="outpath", help="optional output mobileconfig path for the .mobileconfig file (including filename), e.g. \"../out/my-profile.mobileconfig\"", required=False)
 try:
  args = argument_parser.parse_args()
 except:
  argument_parser.print_help()
  exit()
+
+
+def log(text):
+ print("[mobileconcrt] " + text)
 
 
 certs = []
@@ -53,7 +55,7 @@ def generate_uuid_random_uppercase():
 
 
 def add_certificate(crt_files_path, filename, filename_without_extension):
- print("Adding certificate:", filename)
+ log("Adding certificate: " + filename)
  with open(os.path.realpath(os.path.join(crt_files_path, filename)), "rb") as crt_file:
   crt_content = crt_file.read()
   certs.append(dict(
@@ -63,7 +65,7 @@ def add_certificate(crt_files_path, filename, filename_without_extension):
   ))
 
 
-crt_files_path = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__), DIR_NAME_INPUT_CRT_FILES))
+crt_files_path = os.path.realpath(os.path.join(os.getcwd(), args.input_directory))
 input_path_dir = os.fsencode(crt_files_path)
 for file in os.listdir(input_path_dir):
  filename = os.fsdecode(file)
@@ -75,7 +77,7 @@ for file in os.listdir(input_path_dir):
 
 
 if len(certs) < 1:
- print("Error: no valid certificate ("+ALLOWED_EXTENSION_CRT_FILES+") files found in:", crt_files_path)
+ log("Error: no valid certificate ("+ALLOWED_EXTENSION_CRT_FILES+") files found in: " + crt_files_path)
  exit()
 
 
@@ -106,14 +108,14 @@ for cert in certs:
  )
 
 
-output_filename = args.outfile  or  OUTPUT_FILENAME_PREFIX + " " + time.strftime("%Y-%m-%d %H.%M.%S") + " (" + str(len(certs)) + " certs)" + OUTPUT_FILENAME_EXTENSION
-if not output_filename.endswith(OUTPUT_FILENAME_EXTENSION):
- output_filename += OUTPUT_FILENAME_EXTENSION
+output_path_relative = args.outpath  or  OUTPUT_FILENAME_PREFIX + " " + time.strftime("%Y-%m-%d %H.%M.%S") + " (" + str(len(certs)) + " certificates)" + OUTPUT_FILENAME_EXTENSION
+if not output_path_relative.endswith(OUTPUT_FILENAME_EXTENSION):
+ output_path_relative += OUTPUT_FILENAME_EXTENSION
 
-output_path = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__), DIR_NAME_OUTPUT, output_filename))
+output_path = os.path.realpath(os.path.join(os.getcwd(), output_path_relative))
 os.makedirs(os.path.dirname(output_path), exist_ok=True)
-print("Writing mobileconfig file to:", output_path)
+log("Writing mobileconfig file to: " + output_path)
 
 with open(output_path, "wb") as mobileconfig_file:
  plistlib.dump(plist_dict, mobileconfig_file)
- print("Wrote mobileconfig file:", output_filename)
+ log("Wrote mobileconfig file to: " + output_path)
